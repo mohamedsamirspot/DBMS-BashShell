@@ -47,12 +47,15 @@ function list_databases() {
 function connect_to_database() {
     read -p "Enter Database Name: " dbname
     if [ -d "$dbname" ]; then
-        handle_database_submenu $dbname
+        cd "$dbname"
+        bash ../submenu.sh "$dbname"
+        # cd ..
     else
         echo "Database does not exist!"
         read -p "Press any key to continue..." -n1
     fi
 }
+
 
 function drop_database() {
     read -p "Enter Database Name: " dbname
@@ -68,6 +71,7 @@ function drop_database() {
     fi
     read -p "Press any key to continue..." -n1
 }
+
 
 while true; do
     # ; to write muliple commands or keywords in one line
