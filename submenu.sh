@@ -32,12 +32,13 @@ function create_table {
     # convert upper to lower cases
     columns=${columns,,}
     # Write column names and data types to table file with the appropriate formatting
-    echo $columns | sed -E 's/(:int|\:string)(\(pk\)) /&\t\|/g' >$table_file
+    echo $columns | sed -E 's/(:int|\:string)(\(pk\))? /&\t\|/g' >$table_file
+    
     echo "Table $table_name created successfully."
 }
 #----------------------------------------------------------------------------------------------------------------------------------------------
 function list_tables {
-    if [ ! $(ls *.txt 2>/dev/null) ]; then
+    if [[ ! $(ls *.txt 2>/dev/null) ]]; then
         echo "No tables exist in this database."
     else
         echo "Tables in the database:"
@@ -82,20 +83,19 @@ function insert_into_table {
     for column in $column_names; do
         read -p "Enter value for column '$column': " value
 
-        # Check if the column type is 'int' and validate the input accordingly
+
+        # Check if the column type is 'int' or 'string' and validate the input accordingly
         if [[ "$column" == *"int"* ]]; then
-             if ! [[ $value =~ ^-?[0-9]+$ ]] || (( value < -2147483648 )) || (( value > 2147483647 )); then
-             # -? optional negative sign
-                   echo "Invalid column data: $value is not an integer within the range of a 32-bit signed integer for column $column!"
-                   return
-             fi
-        fi
-
-
-        # check for | (no pipes allowed)
-        if [[ "$value" == *"|"* ]]; then
-            echo "Invalid value format: '|' not allowed!"
-            return
+            if ! [[ $value =~ ^-?[0-9]*$ ]] || (( value < -2147483648 )) || (( value > 2147483647 )); then
+                    # -? optional negative sign
+                echo "Invalid column data: $value is not an integer within the range of a 32-bit signed integer for column $column!"
+                return
+            fi
+        elif [[ "$column" == *"string"* ]]; then
+            if [[ "$value" == *"|"* ]] || [[ ${#value} -gt 65000 ]]; then
+                echo "Invalid value format: '|' not allowed or the new value exceeds 65000 characters for column '$column'!"
+                return
+            fi
         fi
 
         # Check if the column is the primary key column and if the entered value is already in the table
@@ -109,13 +109,16 @@ function insert_into_table {
             fi
         fi
         data+="|$value"$'\t\t'
+
         # The $'...' syntax is used to enable escape sequences in strings.
     done
 
     # Remove first pipe character
     data="${data:1}"
     # Write data to table file
-    echo $data >> "$table_file"
+    sed -i '$a\'"$data"'' "$table_file"
+    #\ is used to escape the newline character that separates the command from the text to be appended
+    #'' is an empty string that separates $data from the next argument, which is $table_file
     echo "Data inserted into $table_name successfully."
 }
 #----------------------------------------------------------------------------------------------------------------------------------------------
@@ -198,7 +201,6 @@ function update_table {
     # Find the row with the specified primary key value
     row=$(grep "^$pk_value" "$table_file")
     # to find the pk with this value pk_value followed by a space
-    # \s is not like s/ in the create function it is a regular expression metacharacter that matches any whitespace character, including space, tab, newline, and other whitespace characters.
 
     if [ ! "$row" ]; then
         echo "No row found with primary key value '$pk_value'"
@@ -218,20 +220,20 @@ function update_table {
         # Check if the column is the primary key column
         if [[ "$column" == *"(pk)"* ]]; then
             # Add the primary key value to the new data
-            new_data+="$pk_value"
+            new_data+="$pk_value"$'\t\t'
         else
             # Prompt user to enter a new value for the column
             read -p "Enter new value for column $column: " new_value
             # Check if the column type is 'int' or 'string' and validate the input accordingly
             if [[ "$column" == *"int"* ]]; then
-                if ! [[ $value =~ ^-?[0-9]+$ ]] || (( value < -2147483648 )) || (( value > 2147483647 )); then
+                if ! [[ $new_value =~ ^-?[0-9]*$ ]] || (( new_value < -2147483648 )) || (( new_value > 2147483647 )) ; then
                      # -? optional negative sign
-                   echo "Invalid column data: $value is not an integer within the range of a 32-bit signed integer for column $column!"
+                   echo "Invalid column data: $new_value is not an integer within the range of a 32-bit signed integer for column $column!"
                    return
                 fi
             elif [[ "$column" == *"string"* ]]; then
-                if [[ "$new_value" == *"|"* ]]; then
-                    echo "Invalid value format: '|' not allowed for column '$column'!"
+                if [[ "$new_value" == *"|"* ]] || [[ ${#new_value} -gt 65000 ]]; then
+                    echo "Invalid value format: '|' not allowed or the new value exceeds 65000 characters for column '$column'!"
                     return
                 fi
             fi

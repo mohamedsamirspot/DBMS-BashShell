@@ -5,6 +5,7 @@ function create_database() {
     # check database name
     if [[ "$dbname" =~ ^[a-zA-Z_][a-zA-Z0-9_]{0,127}$ ]]; then
         dbname=${dbname,,}
+        # check if database exists
         if [ -d "$dbname" ]; then
             echo "Database already exists!"
         else
