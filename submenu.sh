@@ -1,19 +1,21 @@
 #!/bin/bash
 
+. ../color_functions.sh
+
 function create_table {
     read -p "Enter table name: " table_name
-        # Validate table name format
+    # Validate table name format
     if [[ "$table_name" =~ ^[_a-zA-Z][_a-zA-Z0-9]{0,127}$ ]]; then
         # Convert table name to lowercase
         table_name=${table_name,,}
         table_file=$table_name.txt
         # check if table exist
         if [ -f $table_file ]; then
-            echo "Table already exists!"
+            print_color "blue" "Table already exists!"
             return
         fi
     else
-        echo "Invalid table name! The name should only contain letters, numbers, underscores and without any spaces, and should start with an underscore or a letter (not a number) with minimum 1 and maximum 128 characters.."
+        print_color "red" "Invalid table name! The name should only contain letters, numbers, underscores and without any spaces, and should start with an underscore or a letter (not a number) with minimum 1 and maximum 128 characters.."
         return
     fi
 
@@ -26,7 +28,7 @@ function create_table {
     # Allowed data types: int, string --> Example: id:int(pk) name:string age:int
     regex='^([a-zA-Z_]\w*):(int|string)(\(pk\)) *( [a-zA-Z_]\w*:(int|string))*$'
     if ! [[ "$columns" =~ $regex ]]; then
-        echo "Invalid columns format!"
+        print_color "red" "Invalid columns format!"
         return
     fi
     # convert upper to lower cases
@@ -34,14 +36,14 @@ function create_table {
     # Write column names and data types to table file with the appropriate formatting
     echo $columns | sed -E 's/(:int|\:string)(\(pk\))? /&\t\|/g' >$table_file
     
-    echo "Table $table_name created successfully."
+    print_color "green" "Table $table_name created successfully."
 }
 #----------------------------------------------------------------------------------------------------------------------------------------------
 function list_tables {
     if [[ ! $(ls *.txt 2>/dev/null) ]]; then
-        echo "No tables exist in this database."
+        print_color "blue" "No tables exist in this database."
     else
-        echo "Tables in the database:"
+        print_color "blue" "Tables in the database:"
         for file in *.txt; do
             table_name=${file%.txt}
             echo - "$table_name"
@@ -55,9 +57,9 @@ function drop_table {
     # check if table exist in current directory
     if [ -f "$table_file" ]; then
         rm "$table_file"
-        echo "Table dropped successfully!"
+        print_color "green" "Table dropped successfully!"
     else
-        echo "Table does not exist!"
+        print_color "blue" "Table does not exist!"
     fi
 }
 #----------------------------------------------------------------------------------------------------------------------------------------------
@@ -67,7 +69,7 @@ function insert_into_table {
 
     # Check if table file exists in current directory
     if ! [ -f "$table_file" ]; then
-        echo "Table does not exist!"
+        print_color "blue" "Table does not exist!"
         return
     fi
 
@@ -83,17 +85,16 @@ function insert_into_table {
     for column in $column_names; do
         read -p "Enter value for column '$column': " value
 
-
         # Check if the column type is 'int' or 'string' and validate the input accordingly
         if [[ "$column" == *"int"* ]]; then
-            if ! [[ $value =~ ^-?[0-9]*$ ]] || (( value < -2147483648 )) || (( value > 2147483647 )); then
+            if ! [[ $value =~ ^-?[0-9]*$ ]] || ! (( value > -2147483648 )) || ! (( value < 2147483647 )); then
                     # -? optional negative sign
-                echo "Invalid column data: $value is not an integer within the range of a 32-bit signed integer for column $column!"
+                print_color "red" "Invalid column data: $value is not an integer within the range of a 32-bit signed integer for column $column!"
                 return
             fi
         elif [[ "$column" == *"string"* ]]; then
             if [[ "$value" == *"|"* ]] || [[ ${#value} -gt 65000 ]]; then
-                echo "Invalid value format: '|' not allowed or the new value exceeds 65000 characters for column '$column'!"
+                print_color "red" "Invalid value format: '|' not allowed or the new value exceeds 65000 characters for column '$column'!"
                 return
             fi
         fi
@@ -104,7 +105,7 @@ function insert_into_table {
             # grep searches for a pattern (^$value) in the file $table_file means to match the beginning of a line (^) followed by the value of $value
             # -q option suppresses the output of grep and only returns the exit status. If grep finds a match, the exit status is 0 else exit status is 1, which means failure.
             # The regular expression ^$value\b matches lines that start with the value in the $value variable, followed by a word boundary (\b). This ensures that the match is for the first word of the line, rather than any instance of the value appearing within the line.
-                echo "Invalid column value: $value already exists in $column column!"
+                print_color "blue" "Invalid column value: $value already exists in $column column!"
                 return
             fi
         fi
@@ -116,10 +117,11 @@ function insert_into_table {
     # Remove first pipe character
     data="${data:1}"
     # Write data to table file
-    sed -i '$a\'"$data"'' "$table_file"
+    sed -i '$a'"$data"'' "$table_file"
+    # sed -i '$a\'"$data"'' "$table_file"
     #\ is used to escape the newline character that separates the command from the text to be appended
     #'' is an empty string that separates $data from the next argument, which is $table_file
-    echo "Data inserted into $table_name successfully."
+    print_color "green" "Data inserted into $table_name successfully."
 }
 #----------------------------------------------------------------------------------------------------------------------------------------------
 function select_from_table {
@@ -127,7 +129,7 @@ function select_from_table {
     table_file=$table_name.txt
     # check if table exist in current directory
     if [ ! -f "$table_file" ]; then
-        echo "Table does not exist!"
+        print_color "blue" "Table does not exist!"
         return
     fi
 
@@ -138,12 +140,12 @@ function select_from_table {
         read -p "Enter the primary key value: " pk_value
         pk_output=$(grep "^$pk_value\b" "$table_file")
         if [[ ! "$pk_output" ]]; then
-            echo "not found"
+            print_color "blue" "not found"
         else
             echo "$pk_output"
         fi
     else
-        echo "Invalid option selected!"
+        print_color "red" "Invalid option selected!"
         return
     fi
 }
@@ -154,7 +156,7 @@ function delete_from_table {
 
     # Check if table file exists
     if [ ! -f "$table_file" ]; then
-        echo "Table does not exist!"
+        print_color "blue" "Table does not exist!"
         return
     fi
 
@@ -162,25 +164,26 @@ function delete_from_table {
     if [[ "$delete_all" == "Y" || "$delete_all" == "y" ]]; then
         # Delete all lines except the first line
         sed -i '2,$d' "$table_file"
-        echo "All records deleted from table '$table_name' successfully."
+        print_color "green" "All records deleted from table '$table_name' successfully."
     elif [[ "$delete_all" == n || N ]]; then
         read -p "Enter value the pk for the record to delete: " pk_value
         if [[ ! "$pk_value" ]]; then
-            echo "Primary key value is empty. Please enter a value."
+            print_color "red" "Primary key value is empty. Please enter a value."
             return
         fi
-        if grep -q "^$pk_value" "$table_file"; then
+        if grep -q "^$pk_value\b" "$table_file"; then
+        #if grep -q "^$pk_value" "$table_file"; then
             # grep searches for a pattern (^$pk_value) in the file $table_file means to match the beginning of a line (^) followed by the value of $pk_value
             # -q option suppresses the output of grep and only returns the exit status. If grep finds a match, the exit status is 0 else exit status is 1, which means failure.
             sed -i "/\<$pk_value\>/d" "$table_file"
             # option -i means to edit the file in place it modifies the contents of the file directly instead of printing the modified text to the standard output
             # /\<$pk_value\>/d means to delete any line that begins with a full word with the value of $pk_value
-            echo "Record with primary key '$pk_value' deleted from table '$table_name' successfully."
+            print_color "green" "Record with primary key '$pk_value' deleted from table '$table_name' successfully."
         else
-            echo "Record with primary key '$pk_value' does not exist in table '$table_name'!"
+            print_color "blue" "Record with primary key '$pk_value' does not exist in table '$table_name'!"
         fi
     else
-        echo "Invalid option selected!"
+        print_color "red" "Invalid option selected!"
         return
     fi
 }
@@ -191,7 +194,7 @@ function update_table {
 
     # Check if table file exists
     if [ ! -f "$table_file" ]; then
-        echo "Table does not exist!"
+        print_color "blue" "Table does not exist!"
         return
     fi
 
@@ -203,7 +206,7 @@ function update_table {
     # to find the pk with this value pk_value followed by a space
 
     if [ ! "$row" ]; then
-        echo "No row found with primary key value '$pk_value'"
+        print_color "blue" "No row found with primary key value '$pk_value'"
         return
     fi
 
@@ -226,14 +229,14 @@ function update_table {
             read -p "Enter new value for column $column: " new_value
             # Check if the column type is 'int' or 'string' and validate the input accordingly
             if [[ "$column" == *"int"* ]]; then
-                if ! [[ $new_value =~ ^-?[0-9]*$ ]] || (( new_value < -2147483648 )) || (( new_value > 2147483647 )) ; then
+                if ! [[ $new_value =~ ^-?[0-9]*$ ]] || ! (( new_value > -2147483648 )) || ! (( new_value < 2147483647 )) ; then
                      # -? optional negative sign
-                   echo "Invalid column data: $new_value is not an integer within the range of a 32-bit signed integer for column $column!"
+                   print_color "red" "Invalid column data: $new_value is not an integer within the range of a 32-bit signed integer for column $column!"
                    return
                 fi
             elif [[ "$column" == *"string"* ]]; then
                 if [[ "$new_value" == *"|"* ]] || [[ ${#new_value} -gt 65000 ]]; then
-                    echo "Invalid value format: '|' not allowed or the new value exceeds 65000 characters for column '$column'!"
+                    print_color "red" "Invalid value format: '|' not allowed or the new value exceeds 65000 characters for column '$column'!"
                     return
                 fi
             fi
@@ -244,28 +247,35 @@ function update_table {
     # Replace the old row with the new data
     sed -i "s/^$pk_value\s\+.*/$new_data/" "$table_file"
     # find a line starts with pk_value followd by one or more white spaces and any number of anything after that using (.*)
-    echo "Row with primary key value '$pk_value' updated successfully."
+    print_color "green" "Row with primary key value '$pk_value' updated successfully."
 }
 #----------------------------------------------------------------------------------------------------------------------------------------------
-clear
-echo -e "Connected to database: $1 \n-------------------------------------------"
-PS3="Enter your choice [1-7] or 8 to disconnect: "
-select opt in "Create Table" "List Tables" "Drop Table" "Insert into Table" "Select From Table" "Delete From Table" "Update Table" "Disconnect Database"; do
-    case $opt in
-    "Create Table") create_table ;;
-    "List Tables") list_tables ;;
-    "Drop Table") drop_table ;;
-    "Insert into Table") insert_into_table ;;
-    "Select From Table") select_from_table ;;
-    "Delete From Table") delete_from_table ;;
-    "Update Table") update_table ;;
-    "Disconnect Database")
-        cd ../
-        bash main_menu.sh
-        ;;
-    *) echo "Invalid choice!" ;;
-    esac
-    read -p "Press any key to continue..." -n1
+while true; do
     clear
-    echo -e "Connected to database: $1 \n-------------------------------------------"
+    print_color "green" "Connected to database: $1"
+    echo "=============================="
+    echo "1. Create Table"
+    echo "2. List Tables"
+    echo "3. Drop Table"
+    echo "4. Insert into Table"
+    echo "5. Select From Table"
+    echo "6. Delete From Table"
+    echo "7. Update Table"
+    echo "0. Disconnect Database"
+    read -p "Enter your choice [1-7] or 0 to disconnect: " choice
+    case $choice in
+    1) create_table ;;
+    2) list_tables ;;
+    3) drop_table ;;
+    4) insert_into_table ;;
+    5) select_from_table ;;
+    6) delete_from_table ;;
+    7) update_table ;;
+    0)
+        cd ../
+        ./main_menu.sh
+        ;;
+    *) print_color "blue" "Invalid choice!" ;;
+    esac
+    read -n1 -p "Press any key to continue..."
 done

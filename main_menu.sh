@@ -1,5 +1,7 @@
 #!/bin/bash
 
+. color_functions.sh
+
 function create_database() {
     read -p "Enter Database Name: " dbname
     # check database name
@@ -7,13 +9,13 @@ function create_database() {
         dbname=${dbname,,}
         # check if database exists
         if [ -d "$dbname" ]; then
-            echo "Database already exists!"
+            print_color "blue" "Database already exists!"
         else
             mkdir "$dbname"
-            echo "Database created successfully!"
+            print_color "green" "Database created successfully!"
         fi
     else
-        echo -e "Invalid database name! \n\"The name should only contain letters, numbers, underscores and without any spaces, and should start with an underscore or a letter (not a number) with minimum 1 and maximum 128 characters.\""
+        print_color "red" "Invalid database name! \n\"The name should only contain letters, numbers, underscores and without any spaces, and should start with an underscore or a letter (not a number) with minimum 1 and maximum 128 characters.\""
     fi
     read -n1 -p "Press any key to continue..."
 }
@@ -26,7 +28,7 @@ function list_databases() {
             echo ${d%/} # remove / from directory name
         done
     else
-        echo "No databases found!"
+        print_color "blue" "No databases found!"
     fi
     read -n1 -p "Press any key to continue..."
 }
@@ -38,7 +40,7 @@ function connect_to_database() {
         cd "$dbname"
         ../submenu.sh "$dbname"
     else
-        echo "Database does not exist!"
+        print_color "blue" "Database does not exist!"
     fi
     read -n1 -p "Press any key to continue..."
 }
@@ -48,9 +50,9 @@ function drop_database() {
     # check if there is a directory (database) with the input name
     if [ -d "$dbname" ]; then
         rm -r "$dbname"
-        echo "Database dropped successfully!"
+        print_color "green" "Database dropped successfully!"
     else
-        echo "Database does not exist!"
+        print_color "blue" "Database does not exist!"
     fi
     read -n1 -p "Press any key to continue..." 
 }
