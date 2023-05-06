@@ -1,3 +1,0 @@
-id:int(pk) 	|name:string
-34		|dfg		
-453		|gfh		

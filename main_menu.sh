@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. color_functions.sh
+. colors_function.sh
 
 function create_database() {
     read -p "Enter Database Name: " dbname

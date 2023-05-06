@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. ../color_functions.sh
+. ../colors_function.sh
 
 function create_table {
     read -p "Enter table name: " table_name
